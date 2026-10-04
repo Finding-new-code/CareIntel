@@ -6,7 +6,10 @@ import hashlib
 import os
 from typing import IO
 
-import magic
+try:
+    import magic
+except (ImportError, Exception):
+    magic = None
 
 from careintel.core.errors import FileTooLargeError, MimeMismatchError, UnsupportedFileTypeError
 
@@ -23,6 +26,35 @@ class FileValidator:
     ) -> None:
         self.allowed_extensions = allowed_extensions
         self.max_size_bytes = max_size_bytes
+
+    def _detect_mime_from_bytes(self, header: bytes) -> str | None:
+        if header.startswith(b"%PDF"):
+            return "application/pdf"
+        if header.startswith(b"PK\x03\x04") or header.startswith(b"PK\x05\x06") or header.startswith(b"PK\x07\x08"):
+            return "application/zip"
+        if header.startswith(b"\xff\xd8\xff"):
+            return "image/jpeg"
+        if header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        if header.startswith(b"ID3") or header.startswith(b"\xff\xfb") or header.startswith(b"\xff\xf3") or header.startswith(b"\xff\xf2"):
+            return "audio/mpeg"
+        if header.startswith(b"RIFF") and b"WAVE" in header[:12]:
+            return "audio/wav"
+        if header.startswith(b"OggS"):
+            return "audio/ogg"
+        if len(header) > 8 and header[4:8] == b"ftyp":
+            return "audio/mp4"
+        if header.startswith(b"MZ"):
+            return "application/x-dosexec"
+        if b"\x00" in header:
+            return None
+        try:
+            decoded = header.decode("utf-8")
+            if all(c.isprintable() or c in "\r\n\t" for c in decoded):
+                return "text/plain"
+        except UnicodeDecodeError:
+            pass
+        return None
 
     def validate_extension(self, filename: str) -> str:
         """
@@ -48,7 +80,16 @@ class FileValidator:
         Check the magic bytes to determine the MIME type.
         Raises MimeMismatchError if it cannot be determined.
         """
-        mime_type = magic.from_buffer(header_bytes, mime=True)
+        mime_type = None
+        if magic is not None:
+            try:
+                mime_type = magic.from_buffer(header_bytes, mime=True)
+            except Exception:
+                mime_type = None
+
+        if not mime_type or mime_type == "application/octet-stream":
+            mime_type = self._detect_mime_from_bytes(header_bytes)
+
         if not mime_type or mime_type == "application/octet-stream":
             raise MimeMismatchError("Could not determine valid MIME type from file signature.")
         return mime_type

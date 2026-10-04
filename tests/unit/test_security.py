@@ -252,14 +252,15 @@ class TestUploadSecurity:
         # Fake a PDF file but put an executable signature in it
         fake_content = b"MZ\x90\x00\x03\x00\x00\x00"  # Windows EXE header
 
-        # Our validator uses python-magic which should catch this
-        import magic
-
-        mime_type = magic.from_buffer(fake_content, mime=True)
-        assert "pdf" not in mime_type
+        detected = validator.validate_magic_signature(fake_content)
+        assert "pdf" not in detected
 
         with pytest.raises(MimeMismatchError):
-            validator.validate_magic_signature(fake_content)
+            validator.validate_mime_consistency(
+                filename="document.pdf",
+                declared_mime="application/pdf",
+                detected_mime=detected,
+            )
 
 
 @pytest.mark.unit

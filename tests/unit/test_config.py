@@ -68,14 +68,27 @@ class TestSettings:
     def test_is_production_flag(self) -> None:
         """is_production returns True only for production environment."""
         prod = Settings(  # type: ignore[call-arg,arg-type]
+            _env_file=None,
             app_env=Environment.PRODUCTION,
             app_debug=False,
             database_url="postgresql+asyncpg://u:p@h:5432/d",
             secret_key="a-very-long-secret-key-for-production-environment",
+            jwt_secret_key="a-very-long-jwt-secret-key-for-production-environment",
+            azure_storage_connection_string="UseDevelopmentStorage=true",
+            redis_url="redis://localhost:6379/0",
+            llm_provider="azure_openai",
+            embedding_provider="azure_openai",
+            tts_provider="azure_openai",
+            stt_provider="azure_openai_transcribe",
+            ocr_provider="azure_document_intelligence",
+            azure_openai_api_key="synthetic-key",
+            azure_document_intelligence_endpoint="https://example.invalid",
+            azure_document_intelligence_key="synthetic-key",
         )
         assert prod.is_production is True
 
         dev = Settings(  # type: ignore[call-arg,arg-type]
+            _env_file=None,
             database_url="postgresql+asyncpg://u:p@h:5432/d",
             secret_key="some-secret",
         )
@@ -147,6 +160,7 @@ class TestSettings:
     def test_cors_allowed_origins_defaults_empty(self) -> None:
         """CORS origins default to an empty list."""
         s = Settings(  # type: ignore[call-arg,arg-type]
+            _env_file=None,
             database_url="postgresql+asyncpg://u:p@h:5432/d",
             secret_key="some-secret",
         )

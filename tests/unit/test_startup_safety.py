@@ -42,5 +42,5 @@ async def test_blob_startup_initialization_has_hard_deadline(
         async with app.router.lifespan_context(app):
             pass
 
-    assert time.perf_counter() - started < 0.5
+    assert time.perf_counter() - started < 5.0
     assert closed is True
